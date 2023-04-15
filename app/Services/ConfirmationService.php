@@ -3,109 +3,56 @@
 namespace App\Services;
 
 use App\Models\Confirmation;
-use App\Models\User;
-use App\Models\UserSetting;
-use Exception;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Notification;
+use App\Notifications\ConfirmationNotification;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class ConfirmationService
 {
 
 
-    public function generate(User $user)
+    public function generateAndSend(string $setting_id, string $confirmationMethod)
     {
         $code = rand(100000, 999999);
-        // $confirmationCode = UserSetting::create(['user_id' => $user->id, 'code' => $code]);
-        // send confirmation code through the user's preferred method
-        return $code;
+        $expiryTime = Carbon::now()->addMinutes(10);
+        $ConfirmationCode = $this->sendConfirmationCode($code, $confirmationMethod);
+        // if success send message
+        if ($ConfirmationCode)
+            Confirmation::create(['user_setting_id' => $setting_id, 'code' => $code, 'expiry_time' => $expiryTime, 'confirmation_method' => $confirmationMethod]);
+        return $ConfirmationCode;
     }
-
-    public function validate(User $user, string $code, string $type)
+    public function validateCode(string $setting_id, string $confirmation_code)
     {
-        $confirmationCode = UserSetting::where(['user_id' => $user->id, 'confirmation_code' => $code])->first();
-        if (!$confirmationCode) {
-            throw new Exception('Invalid confirmation code');
-        }
-        $confirmationCode->delete();
+        $confirmationCode = Confirmation::where(['user_setting_id' => $setting_id, 'code' => $confirmation_code])->first();
+        if (!$confirmationCode)
+            return 'Invalid confirmation code';
+        $expiryTime = Carbon::parse($confirmationCode->expiry_time);
+        if ($expiryTime->isPast())
+            return 'Confirmation code has expired';
+        $confirmationCode->is_success = true;
+        $confirmationCode->save();
+        return 'Ok!';
     }
-
-    public function sendConfirmationCode(UserSetting $userSetting, $code)
+    public function sendConfirmationCode($code, $confirmationMethod)
     {
-        $message = 'Your confirmation code is: ' . $code;
-        switch ($userSetting->user->confirmation_method) {
+        // we can use this for sending if we in production 
+        //$confirmation_service = new ConfirmationNotification();
+        $messageAndResult = 'Your confirmation code is: ' . $code;
+        switch ($confirmationMethod) {
             case 'sms':
-                // Send SMS
-                $message .= ' Send to SMS';
+                //logic Sending here SMS... 
+                $messageAndResult .= ' Send to your phone "' . Auth::user()->phone_number.'"';
                 break;
             case 'email':
-                // Send email
-                $message .= ' Send to email';
+                // logic Sending here email...
+                $messageAndResult .= ' Send to your email "' . Auth::user()->email.'"';
                 break;
             case 'telegram':
-                // Send telegram message
-                $message .= ' Send to telegram';
+                // logic Sending here message...
+                $messageAndResult .= ' Send to your telegram "@' . Auth::user()->telegram.'"';
                 break;
         }
-        return $message;
+        //return message if success or error 
+        return $messageAndResult;
     }
-
-    // public function generateAndSendConfirmationCode($user_id, $setting_id, $confirmation_method)
-    // {
-    //     $user_setting = UserSetting::where('user_id', $user_id)
-    //         ->where('id', $setting_id)
-    //         ->firstOrFail();
-
-    //     $confirmation = new Confirmation();
-    //     $confirmation->code_value = rand(1000
-
-    //  public function generateConfirmationCode(UserSetting $userSetting)
-    // {
-    //     // Generate a random code
-    //     $code = rand(100000, 999999);
-
-    //     // Save the code to the database
-    //     $confirmation = new Confirmation();
-    //     $confirmation->code = $code;
-    //     $confirmation->user_setting_id = $userSetting->id;
-    //     $confirmation->method = $userSetting->user->confirmation_method;
-    //     $confirmation->expires_at = now()->addMinutes(10);
-    //     $confirmation->save();
-
-    //     // Send the confirmation code to the user
-    //     $this->sendConfirmationCode($userSetting, $code);
-    // }
-    // public function validateConfirmationCode(UserSetting $userSetting, $code)
-    // {
-    //     // Retrieve all the confirmation codes for the user setting
-    //     $confirmationCodes = $userSetting->confirmationCodes;
-
-    //     // Check if the provided code matches any of the confirmation codes
-    //     foreach ($confirmationCodes as $confirmation) {
-    //         if ($confirmation->code == $code && $confirmation->expires_at > now()) {
-    //             // Code is valid
-    //             $confirmation->delete();
-    //             return true;
-    //         }
-    //     }
-
-    //     // Code is not valid
-    //     return false;
-    // }
-    // public function sendConfirmationCode(UserSetting $userSetting, $code)
-    // {
-    //     $message = 'Your confirmation code is: ' . $code;
-
-    //     switch ($userSetting->user->confirmation_method) {
-    //         case 'sms':
-    //             // Send SMS
-    //             break;
-    //         case 'email':
-    //             // Send email
-    //             break;
-    //         case 'telegram':
-    //             // Send telegram message
-    //             break;
-    //     }
-    // }
 }

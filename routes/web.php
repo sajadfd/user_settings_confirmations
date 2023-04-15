@@ -16,19 +16,21 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('layout');
+    return view('auth/registration');
 });
 
 
 
-Route::get('/users/{user}/settings', [UserSettingController::class, 'index'])->name('settings.index');
-Route::post('/users/{user}/settings', [UserSettingController::class, 'store'])->name('settings.store');
-Route::get('/users/{user}/settings/create', [UserSettingController::class, 'create'])->name('settings.create');
-Route::get('/users/{user}/settings/{setting}/edit', [UserSettingController::class, 'edit'])->name('settings.edit');
-Route::put('/users/{user}/settings/{setting}', [UserSettingController::class, 'update'])->name('settings.update');
-Route::delete('/users/{user}/settings/{setting}', [UserSettingController::class, 'destroy'])->name('settings.destroy');
-Route::post('/users/{user}/settings/check_confirmation_code', [UserSettingController::class, 'checkConfirmationCode'])->name('settings.check_confirmation_code');
-
+Route::middleware(['auth'])->group(function () {
+    Route::get('/users/{user}/settings', [UserSettingController::class, 'index'])->name('settings.index');
+    Route::post('/users/{user}/settings', [UserSettingController::class, 'store'])->name('settings.store');
+    Route::get('/users/{user}/settings/create', [UserSettingController::class, 'create'])->name('settings.create');
+    Route::get('/users/{user}/settings/{setting}/edit', [UserSettingController::class, 'edit'])->name('settings.edit');
+    Route::put('/users/{user}/settings/{setting}', [UserSettingController::class, 'update'])->name('settings.update');
+    Route::delete('/users/{user}/settings/{setting}', [UserSettingController::class, 'destroy'])->name('settings.destroy');
+    Route::post('/users/{user}/settings/check_confirmation_code', [UserSettingController::class, 'checkConfirmationCode'])->name('settings.check_confirmation_code');
+    Route::post('/users/{user}/settings/send_confirmation_code', [UserSettingController::class, 'sendConfirmationCode'])->name('settings.send_confirmation_code');
+});
 
 Route::get('login', [AuthController::class, 'index'])->name('login');
 Route::post('post-login', [AuthController::class, 'postLogin'])->name('login.post');

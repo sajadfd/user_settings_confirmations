@@ -15,9 +15,10 @@ class CreateConfirmationsTable extends Migration
     {
         Schema::create('confirmations', function (Blueprint $table) {
             $table->id();
-            $table->string('code_value');
+            $table->string('code');
             $table->dateTime('expiry_time');
             $table->string('confirmation_method');
+            $table->boolean('is_success')->default(false);
             $table->unsignedBigInteger('user_setting_id');
             $table->timestamps();
             $table->foreign('user_setting_id')->references('id')->on('user_settings')->onDelete('cascade');

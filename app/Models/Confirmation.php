@@ -12,9 +12,10 @@ class Confirmation extends Model
 
     protected $fillable = [
         'user_setting_id',
-        'code_value',
+        'code',
         'expiry_time',
         'confirmation_method',
+        'is_success',
     ];
 
     public function userSetting()

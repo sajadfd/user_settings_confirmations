@@ -16,7 +16,6 @@ class UserSetting extends Model
         'confirmation_code',
 
     ];
-
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Laravel - ItSolutionStuff.com</title>
+    <title>Laravel</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
     <title>App Name - @yield('title')</title>
 
