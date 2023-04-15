@@ -15,9 +15,9 @@ class CreateConfirmationsTable extends Migration
     {
         Schema::create('confirmations', function (Blueprint $table) {
             $table->id();
-            $table->string('code');
+            $table->string('code',6);
             $table->dateTime('expiry_time');
-            $table->string('confirmation_method');
+            $table->string('confirmation_method',22);
             $table->boolean('is_success')->default(false);
             $table->unsignedBigInteger('user_setting_id');
             $table->timestamps();

@@ -9,50 +9,67 @@ use Illuminate\Support\Facades\Auth;
 
 class ConfirmationService
 {
+    private $notification;
 
-
-    public function generateAndSend(string $setting_id, string $confirmationMethod)
+    public function __construct(ConfirmationNotification $notification)
     {
+        $this->notification = $notification;
+    }
+    public function generateAndSend(string $setting_id, string $confirmationMethod): string
+    {
+        $validConfirmationCode = Confirmation::where('expiry_time', '>', Carbon::now())->where(['user_setting_id' =>  $setting_id, 'confirmation_method' =>  $confirmationMethod, 'is_success' =>  false])->first();
+        if ($validConfirmationCode) {
+            return $this->sendConfirmationCode($validConfirmationCode->code, $confirmationMethod);
+        }
         $code = rand(100000, 999999);
         $expiryTime = Carbon::now()->addMinutes(10);
         $ConfirmationCode = $this->sendConfirmationCode($code, $confirmationMethod);
-        // if success send message
-        if ($ConfirmationCode)
-            Confirmation::create(['user_setting_id' => $setting_id, 'code' => $code, 'expiry_time' => $expiryTime, 'confirmation_method' => $confirmationMethod]);
+        // if success send message we save
+        if ($ConfirmationCode) {
+            Confirmation::create([
+                'user_setting_id' => $setting_id,
+                'code' => $code,
+                'expiry_time' => $expiryTime,
+                'confirmation_method' => $confirmationMethod
+            ]);
+        }
         return $ConfirmationCode;
     }
-    public function validateCode(string $setting_id, string $confirmation_code)
+    public function validateCode(string $setting_id, string $confirmation_code, string $confirmationMethod): string
     {
-        $confirmationCode = Confirmation::where(['user_setting_id' => $setting_id, 'code' => $confirmation_code])->first();
-        if (!$confirmationCode)
+        $confirmationCode = Confirmation::where(['user_setting_id' => $setting_id, 'code' => $confirmation_code, 'confirmation_method' => $confirmationMethod, 'is_success' => false])->first();
+        $expiryTime = Carbon::parse(optional($confirmationCode)->expiry_time);
+        if (!$confirmationCode) {
             return 'Invalid confirmation code';
-        $expiryTime = Carbon::parse($confirmationCode->expiry_time);
-        if ($expiryTime->isPast())
-            return 'Confirmation code has expired';
-        $confirmationCode->is_success = true;
-        $confirmationCode->save();
-        return 'Ok!';
+        } elseif ($expiryTime->isPast()) {
+            //if expired we can send new code
+            $newGeneratedCode = $this->generateAndSend($confirmationCode->user_setting_id, $confirmationCode->confirmation_method);
+            return 'Confirmation code has expired we send new ' . $newGeneratedCode;
+        } else {
+            $confirmationCode->is_success = true;
+            $confirmationCode->save();
+            return '';
+        }
     }
-    public function sendConfirmationCode($code, $confirmationMethod)
+    public function sendConfirmationCode(int $code, string $confirmationMethod): string
     {
-        // we can use this for sending if we in production 
-        //$confirmation_service = new ConfirmationNotification();
-        $messageAndResult = 'Your confirmation code is: ' . $code;
+        $user = Auth::user();
         switch ($confirmationMethod) {
             case 'sms':
-                //logic Sending here SMS... 
-                $messageAndResult .= ' Send to your phone "' . Auth::user()->phone_number.'"';
+                $recipient = 'phone "' . $user->phone_number . '"';
                 break;
             case 'email':
-                // logic Sending here email...
-                $messageAndResult .= ' Send to your email "' . Auth::user()->email.'"';
+                $recipient = 'email "' . $user->email . '"';
                 break;
             case 'telegram':
-                // logic Sending here message...
-                $messageAndResult .= ' Send to your telegram "@' . Auth::user()->telegram.'"';
+                $recipient = 'telegram "@' . $user->telegram . '"';
                 break;
+            default:
+                return 'Invalid confirmation method specified.';
         }
-        //return message if success or error 
-        return $messageAndResult;
+        $message = "Your confirmation code is: $code. Sent to your $recipient.";
+        // If we were in production, we could use this line to send the message
+        // $this->notification->send($user, $message);
+        return $message;
     }
 }

@@ -78,6 +78,7 @@
                 });
             });
             $('#verify-btn').click(function() {
+                var confirmationMethod = $('#method').val();
                 var confirmationCode = $('#confirmation_code').val();
                 $.ajaxSetup({
                     headers: {
@@ -89,7 +90,9 @@
                     method: 'post',
                     data: {
                         confirmation_code: confirmationCode,
-                        setting_id: {{ $setting->id }}
+                        setting_id: {{ $setting->id }},
+                        confirmationMethod: confirmationMethod,
+
                     },
                     success: function(data) {
                         if (data.success) {

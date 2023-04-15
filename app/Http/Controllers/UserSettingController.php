@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class UserSettingController extends Controller
 {
+    protected $confirmationService;
+    public function __construct(ConfirmationService $confirmationService)
+    {
+        $this->confirmationService = $confirmationService;
+    }
     public function index(User $user)
     {
         $settings = $user->userSettings;
@@ -20,15 +25,11 @@ class UserSettingController extends Controller
     }
     public function store(Request $request, User $user)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string',
             'value' => 'required|string',
         ]);
-        $setting = new UserSetting([
-            'name' => $request->input('name'),
-            'value' => $request->input('value')
-        ]);
-        $user->userSettings()->save($setting);
+        $user->userSettings()->create($validated);
         return redirect()->route('settings.index', $user);
     }
     public function edit(User $user, UserSetting $setting)
@@ -37,11 +38,11 @@ class UserSettingController extends Controller
     }
     public function update(Request $request, User $user, UserSetting $setting)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string',
             'value' => 'required|string',
         ]);
-        $setting->update(['value' => $request->input('value'), 'name' => $request->input('name')]);
+        $setting->update($validated);
         return redirect()->route('settings.index', $user);
     }
     public function destroy(User $user, UserSetting $setting)
@@ -51,26 +52,27 @@ class UserSettingController extends Controller
     }
     public function sendConfirmationCode(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'confirmationMethod' => 'required|string|in:sms,email,telegram',
             'setting_id' => 'required'
         ]);
-        $confirmation_service = new ConfirmationService();
-        $confirmationCode =  $confirmation_service->generateAndSend($request->setting_id, $request->confirmationMethod);
-        if (!$confirmationCode)
+        $confirmationCode = $this->confirmationService->generateAndSend($validated['setting_id'], $validated['confirmationMethod']);
+        if (!$confirmationCode) {
             return response()->json(['success' => false]);
+        }
         return response()->json(['success' => true, 'message' => $confirmationCode]);
     }
     public function checkConfirmationCode(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'confirmation_code' => 'required|integer|digits:6',
-            'setting_id' => 'required'
+            'setting_id' => 'required',
+            'confirmationMethod' => 'required|string|in:sms,email,telegram',
         ]);
-        $confirmation_service = new ConfirmationService();
-        $validateCode =  $confirmation_service->validateCode($request->setting_id, $request->confirmation_code);
-        if (!$validateCode)
-            return response()->json(['success' => false]);
-        return response()->json(['success' => true, 'message' => $validateCode]);
+        $validateCode = $this->confirmationService->validateCode($validated['setting_id'], $validated['confirmation_code'], $validated['confirmationMethod']);
+        if ($validateCode) {
+            return response()->json(['success' => false, 'message' => $validateCode]);
+        }
+        return response()->json(['success' => true, 'message' =>'Ok !']);
     }
 }
